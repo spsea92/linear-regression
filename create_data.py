@@ -58,5 +58,3 @@ dataset.to_csv("/Users/sreysea/Documents/STAT510_linreg/dataset.csv")
 mysql_password = os.environ.get('MYSQL_PW')
 engine = create_engine("mysql+pymysql://{user}:{pw}@localhost/{db}".format(user="root",pw=mysql_password,db="spotifyvalence"))
 dataset.to_sql('songs_dataset', con = engine, if_exists = 'append') # Insert whole DataFrame into MySQL
-
-print("DONE")
