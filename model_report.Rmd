@@ -1,6 +1,0 @@
----
-title: "Building a Linear Regression Model to Predict a Song's Valence"
-author: "Srey Sea"
-date: "6/26/2020"
-output: html_document
----
