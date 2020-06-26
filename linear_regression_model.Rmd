@@ -1,5 +1,10 @@
 ---
 title: "Building a Linear Regression Model to Predict Song's Valence (Not finished)"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 author: "Srey Sea"
 date: "6/25/2020"
 output: html_document
