@@ -33,12 +33,12 @@ names(mydata)
     ## [17] "uri"              "track_href"       "analysis_url"     "duration_ms"     
     ## [21] "time_signature"
 
-The method of the **best subsets regression with adjusted R\(^2\)** will
-be used to select the independent variables. The model with the highest
-adjusted R\(^2\) values and the lowest MSE value is deemed the best
-model. Below shows that model \#6 is the best model, so, danceability,
-energy, speechiness, acousticness, liveness, and duration\_ms are the
-appropriate predictors to be used.
+The method of the **best subsets regression with adjusted
+R<sup>2</sup>** will be used to select the independent variables. The
+model with the highest adjusted R<sup>2</sup> values and the lowest MSE
+value is deemed the best model. Below shows that model \#6 is the best
+model, so, danceability, energy, speechiness, acousticness, liveness,
+and duration\_ms are the appropriate predictors to be used.
 
 ``` r
 library(leaps)
@@ -131,3 +131,15 @@ ggheatmap +
 ```
 
 ![](linear_regression_model_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+The strongest correlation is between energy and acousticness, so, their
+interaction term will be considered.
+
+The current model: **valence** = β<sub>o</sub> +
+β<sub>1</sub>**danceability** + β<sub>2</sub>**energy** +
+β<sub>3</sub>**speechiness** + β<sub>4</sub>**acousticness** +
+β<sub>5</sub>**liveness** + β<sub>6</sub>**duration\_ms** +
+β<sub>7</sub>**energy\*acousticness**
+
+Next, a series of F-tests will be performed to determine the independent
+variables to be used for the final model.
