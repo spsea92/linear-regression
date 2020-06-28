@@ -2,12 +2,17 @@ Building a Linear Regression Model to Predict Song’s Valence (Not
 finished)
 ================
 Srey Sea
-6/25/2020
+6/28/2020
 
 In this project, I will create a linear regression model to predict a
 song’s valence. Caution–the model obtained may or not be a good model
 for this prediction. The data is provided by Spotify and a Python script
 was created and used to collect the data in a .csv file.
+
+## Parameters Selection
+
+First, parameters, or the independent variables, need to be chosen to be
+used in the model.
 
 Loading the songs dataset.
 
@@ -15,9 +20,6 @@ Loading the songs dataset.
 mydata = read.csv("dataset.csv")
 attach(mydata)
 ```
-
-First, parameters, or the independent variables, need to be chosen to be
-used in the model.
 
 The dataset has the following parameters:
 
@@ -86,8 +88,10 @@ summary.mod$which
     ## 7            FALSE     TRUE FALSE        TRUE          FALSE
     ## 8             TRUE     TRUE FALSE        TRUE          FALSE
 
-Interaction terms should be considered. Using a correlation heatmap (the
-tutorial to create a correlation heatmap can be found here)
+Interaction terms should be considered. So, a correlation heatmap will
+be used to see the interactions amongst the variables. [A tutorial to
+create a correlation heatmap can be found
+here.](http://www.sthda.com/english/wiki/ggplot2-quick-correlation-matrix-heatmap-r-software-and-data-visualization)
 
 ``` r
 mydata2 = mydata[,c(4,5,9,10,12,20)]
@@ -141,5 +145,191 @@ The current model: **valence** = β<sub>o</sub> +
 β<sub>5</sub>**liveness** + β<sub>6</sub>**duration\_ms** +
 β<sub>7</sub>**energy\*acousticness**
 
-Next, a series of F-tests will be performed to determine the independent
-variables to be used for the final model.
+``` r
+mod0 = lm(valence ~ danceability + energy + speechiness + acousticness 
+          + liveness + duration_ms + I(energy*acousticness))
+```
+
+Next, a series of **partial F-tests** will be performed to determine the
+independent variables to be used for the final model.
+
+Looking at the summary of the model, the parameters speechiness,
+acousticness, liveness, and the interaction seems to be insignificant to
+the model as their p-value is over 0.05.
+
+``` r
+summary(mod0)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = valence ~ danceability + energy + speechiness + 
+    ##     acousticness + liveness + duration_ms + I(energy * acousticness))
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.41096 -0.10771 -0.00938  0.11045  0.42131 
+    ## 
+    ## Coefficients:
+    ##                            Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)              -2.714e-02  8.002e-02  -0.339 0.734630    
+    ## danceability              6.304e-01  5.937e-02  10.618  < 2e-16 ***
+    ## energy                    2.965e-01  7.813e-02   3.795 0.000166 ***
+    ## speechiness               2.127e-01  1.185e-01   1.795 0.073295 .  
+    ## acousticness              6.013e-02  7.381e-02   0.815 0.415626    
+    ## liveness                 -9.294e-02  7.155e-02  -1.299 0.194522    
+    ## duration_ms              -6.284e-07  1.598e-07  -3.933 9.57e-05 ***
+    ## I(energy * acousticness)  7.448e-02  1.348e-01   0.553 0.580837    
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.169 on 496 degrees of freedom
+    ## Multiple R-squared:  0.3334, Adjusted R-squared:  0.324 
+    ## F-statistic: 35.43 on 7 and 496 DF,  p-value: < 2.2e-16
+
+For the first partial F-test, we will see if *all* of the possible
+insignificant parameter are, in fact, insignificant. We see from the
+p-value = 0.02393 that at least one of parameters in question is
+significant.
+
+``` r
+red.mod = lm(valence ~ danceability + energy + duration_ms)
+mod1 = mod0
+anova(red.mod, mod1)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: valence ~ danceability + energy + duration_ms
+    ## Model 2: valence ~ danceability + energy + speechiness + acousticness + 
+    ##     liveness + duration_ms + I(energy * acousticness)
+    ##   Res.Df    RSS Df Sum of Sq     F  Pr(>F)  
+    ## 1    500 14.484                             
+    ## 2    496 14.160  4   0.32408 2.838 0.02393 *
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+The next series of partial F-test will test each of the parameters in
+question to determine their significance.
+
+``` r
+mod2 = lm(valence ~ danceability + energy + duration_ms + speechiness)
+anova(red.mod, mod2)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: valence ~ danceability + energy + duration_ms
+    ## Model 2: valence ~ danceability + energy + duration_ms + speechiness
+    ##   Res.Df    RSS Df Sum of Sq      F  Pr(>F)  
+    ## 1    500 14.484                              
+    ## 2    499 14.382  1   0.10195 3.5373 0.06058 .
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+mod3 = lm(valence ~ danceability + energy + duration_ms + acousticness)
+anova(red.mod, mod3)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: valence ~ danceability + energy + duration_ms
+    ## Model 2: valence ~ danceability + energy + duration_ms + acousticness
+    ##   Res.Df    RSS Df Sum of Sq     F  Pr(>F)  
+    ## 1    500 14.484                             
+    ## 2    499 14.321  1   0.16276 5.671 0.01762 *
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+mod4 = lm(valence ~ danceability + energy + duration_ms + liveness)
+anova(red.mod, mod4)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: valence ~ danceability + energy + duration_ms
+    ## Model 2: valence ~ danceability + energy + duration_ms + liveness
+    ##   Res.Df    RSS Df Sum of Sq      F Pr(>F)
+    ## 1    500 14.484                           
+    ## 2    499 14.435  1  0.048723 1.6842  0.195
+
+``` r
+mod5 = lm(valence ~ danceability + energy + duration_ms + I(energy*acousticness))
+anova(red.mod, mod5)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: valence ~ danceability + energy + duration_ms
+    ## Model 2: valence ~ danceability + energy + duration_ms + I(energy * acousticness)
+    ##   Res.Df    RSS Df Sum of Sq     F  Pr(>F)  
+    ## 1    500 14.484                             
+    ## 2    499 14.314  1   0.17002 5.927 0.01526 *
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+The ANOVA tables above shows that acousticness and the interaction
+between energy and acousticness should be considered in the model as
+their p-value is less than 0.05, while speechiness and liveness can be
+omitted.
+
+The next partial F-test will determine the significance of acousticness
+and the interaction term. If the interaction between energy and
+acousticness is significant, then we will have to include acousticness
+no matter the significance, but, if acousticness is found to be
+significant, we do not have to include the interaction term. The ANOVA
+table below shows that the interaction term is insigificant to the
+model.
+
+``` r
+full.mod = lm(valence ~ danceability + energy + duration_ms + acousticness 
+          + I(energy*acousticness))
+red.mod1 = lm(valence ~ danceability + energy + duration_ms + acousticness)
+anova(red.mod1, full.mod)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: valence ~ danceability + energy + duration_ms + acousticness
+    ## Model 2: valence ~ danceability + energy + duration_ms + acousticness + 
+    ##     I(energy * acousticness)
+    ##   Res.Df    RSS Df Sum of Sq      F Pr(>F)
+    ## 1    499 14.321                           
+    ## 2    498 14.304  1  0.017563 0.6115 0.4346
+
+Thus, the independent parameters that are in the final model are
+danceability, energy, duration\_ms, and acousticness. Looking at the
+summary below, all of the parameters are now significant as their
+p-values are small (less than 0.05).
+
+``` r
+fit.lm = red.mod1
+summary(fit.lm)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = valence ~ danceability + energy + duration_ms + 
+    ##     acousticness)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.41755 -0.11103 -0.01417  0.11028  0.41827 
+    ## 
+    ## Coefficients:
+    ##                Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)  -5.136e-02  7.085e-02  -0.725   0.4689    
+    ## danceability  6.468e-01  5.871e-02  11.016  < 2e-16 ***
+    ## energy        3.230e-01  5.853e-02   5.518 5.53e-08 ***
+    ## duration_ms  -6.337e-07  1.589e-07  -3.989 7.63e-05 ***
+    ## acousticness  9.293e-02  3.902e-02   2.381   0.0176 *  
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.1694 on 499 degrees of freedom
+    ## Multiple R-squared:  0.3258, Adjusted R-squared:  0.3204 
+    ## F-statistic: 60.28 on 4 and 499 DF,  p-value: < 2.2e-16
+
+## Influential Points

@@ -1,11 +1,15 @@
 ---
 title: "Building a Linear Regression Model to Predict Song's Valence (Not finished)"
 author: "Srey Sea"
-date: "6/25/2020"
+date: "6/28/2020"
 output: github_document
 ---
 
 In this project, I will create a linear regression model to predict a song's valence. Caution--the model obtained may or not be a good model for this prediction. The data is provided by Spotify and a Python script was created and used to collect the data in a .csv file.
+
+## Parameters Selection
+
+First, parameters, or the independent variables, need to be chosen to be used in the model.
 
 Loading the songs dataset.
 
@@ -14,15 +18,14 @@ mydata = read.csv("dataset.csv")
 attach(mydata)
 ```
 
-First, parameters, or the independent variables, need to be chosen to be used in the model.
-
 The dataset has the following parameters:
+
 ```{r}
 library(broom)
 names(mydata)
 ```
 
-The method of the **best subsets regression with adjusted R$^2$** will be used to select the independent variables. The model with the highest adjusted R$^2$ values and the lowest MSE value is deemed the best model. Below shows that model #6 is the best model, so, danceability, energy, speechiness, acousticness, liveness, and duration_ms are the appropriate predictors to be used.
+The method of the **best subsets regression with adjusted R<sup>2</sup>** will be used to select the independent variables. The model with the highest adjusted R<sup>2</sup> values and the lowest MSE value is deemed the best model. Below shows that model #6 is the best model, so, danceability, energy, speechiness, acousticness, liveness, and duration_ms are the appropriate predictors to be used.
 
 ```{r}
 library(leaps)
@@ -39,7 +42,7 @@ summary.mod$adjr2
 summary.mod$which
 ```
 
-Interaction terms should be considered. Using a correlation heatmap (the tutorial to create a correlation heatmap can be found here)
+Interaction terms should be considered. So, a correlation heatmap will be used to see the interactions amongst the variables. [A tutorial to create a correlation heatmap can be found here.](http://www.sthda.com/english/wiki/ggplot2-quick-correlation-matrix-heatmap-r-software-and-data-visualization)
 
 ```{r}
 mydata2 = mydata[,c(4,5,9,10,12,20)]
@@ -81,3 +84,55 @@ ggheatmap +
   guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
                                title.position = "top", title.hjust = 0.5))
 ```
+
+The strongest correlation is between energy and acousticness, so, their interaction term will be considered.
+
+The current model: **valence** = &beta;<sub>o</sub> + &beta;<sub>1</sub>**danceability** + &beta;<sub>2</sub>**energy** + &beta;<sub>3</sub>**speechiness** + &beta;<sub>4</sub>**acousticness** + &beta;<sub>5</sub>**liveness** + &beta;<sub>6</sub>**duration_ms** + &beta;<sub>7</sub>**energy\*acousticness**
+```{r}
+mod0 = lm(valence ~ danceability + energy + speechiness + acousticness 
+          + liveness + duration_ms + I(energy*acousticness))
+```
+
+Next, a series of **partial F-tests** will be performed to determine the independent variables to be used for the final model.
+
+Looking at the summary of the model, the parameters speechiness, acousticness, liveness, and the interaction seems to be insignificant to the model as their p-value is over 0.05.
+```{r}
+summary(mod0)
+```
+
+For the first partial F-test, we will see if *all* of the possible insignificant parameter are, in fact, insignificant. We see from the p-value = 0.02393 that at least one of parameters in question is significant.
+```{r}
+red.mod = lm(valence ~ danceability + energy + duration_ms)
+mod1 = mod0
+anova(red.mod, mod1)
+```
+
+The next series of partial F-test will test each of the parameters in question to determine their significance.
+```{r}
+mod2 = lm(valence ~ danceability + energy + duration_ms + speechiness)
+anova(red.mod, mod2)
+mod3 = lm(valence ~ danceability + energy + duration_ms + acousticness)
+anova(red.mod, mod3)
+mod4 = lm(valence ~ danceability + energy + duration_ms + liveness)
+anova(red.mod, mod4)
+mod5 = lm(valence ~ danceability + energy + duration_ms + I(energy*acousticness))
+anova(red.mod, mod5)
+```
+
+The ANOVA tables above shows that acousticness and the interaction between energy and acousticness should be considered in the model as their p-value is less than 0.05, while speechiness and liveness can be omitted.
+
+The next partial F-test will determine the significance of acousticness and the interaction term. If the interaction between energy and acousticness is significant, then we will have to include acousticness no matter the significance, but, if acousticness is found to be significant, we do not have to include the interaction term. The ANOVA table below shows that the interaction term is insigificant to the model.
+```{r}
+full.mod = lm(valence ~ danceability + energy + duration_ms + acousticness 
+          + I(energy*acousticness))
+red.mod1 = lm(valence ~ danceability + energy + duration_ms + acousticness)
+anova(red.mod1, full.mod)
+```
+
+Thus, the independent parameters that are in the final model are danceability, energy, duration_ms, and acousticness. Looking at the summary below, all of the parameters are now significant as their p-values are small (less than 0.05).
+```{r}
+fit.lm = red.mod1
+summary(fit.lm)
+```
+
+## Influential Points
