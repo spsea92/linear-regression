@@ -1,18 +1,17 @@
-Building a Linear Regression Model to Predict Song’s Valence (Not
-finished)
+Building a Linear Regression Model to Predict Song’s Valence
+(In-Progress)
 ================
 Srey Sea
-6/28/2020
+6/29/2020
 
 In this project, I will create a linear regression model to predict a
 song’s valence. Caution–the model obtained may or not be a good model
 for this prediction. The data is provided by Spotify and a Python script
 was created and used to collect the data in a .csv file.
 
-## Parameters Selection
+## Variables Selection
 
-First, parameters, or the independent variables, need to be chosen to be
-used in the model.
+First, the parameters, or the independent variables, need to be chosen.
 
 Loading the songs dataset.
 
@@ -38,12 +37,12 @@ names(mydata)
 The method of the **best subsets regression with adjusted
 R<sup>2</sup>** will be used to select the independent variables. The
 model with the highest adjusted R<sup>2</sup> values and the lowest MSE
-value is deemed the best model. Below shows that model \#6 is the best
-model, so, danceability, energy, speechiness, acousticness, liveness,
-and duration\_ms are the appropriate predictors to be used.
+value is deemed the best model. Below shows that model \#6, which
+includes danceability, energy, speechiness, acousticness, liveness, and
+duration\_ms, is the best model.
 
 ``` r
-library(leaps)
+library(leaps) # To use regsubsets
 n = length(mydata[,1])
 mod = regsubsets(cbind(danceability,energy,key,loudness,mode,speechiness,
                        acousticness,instrumentalness,liveness,tempo,
@@ -102,12 +101,9 @@ get_upper_tri = function(cormat){
   cormat[lower.tri(cormat)]<- NA
   return(cormat)
 }
-
 upper_tri = get_upper_tri(cormat)
-
 melted_cormat = melt(upper_tri, na.rm = TRUE)
-# Heatmap
-library(ggplot2)
+library(ggplot2) # To plot using ggplot
 ggheatmap = ggplot(data = melted_cormat, aes(Var2, Var1, fill = value))+
   geom_tile(color = "white")+
   scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
@@ -117,7 +113,6 @@ ggheatmap = ggplot(data = melted_cormat, aes(Var2, Var1, fill = value))+
   theme(axis.text.x = element_text(angle = 45, vjust = 1, 
                                    size = 12, hjust = 1))+
   coord_fixed()
-
 ggheatmap + 
   geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
   theme(
@@ -333,3 +328,123 @@ summary(fit.lm)
     ## F-statistic: 60.28 on 4 and 499 DF,  p-value: < 2.2e-16
 
 ## Influential Points
+
+The **studentized deleted residuals** will be used to determine any
+outliers. Since none of the rstudent values are greater than 3 or less
+than -3, there are no outliers.
+
+``` r
+outl = rstudent(fit.lm)
+index = seq(1, length(outl), by=1)
+ggplot(fit.lm, aes(x=index, y=outl)) + geom_point() + ylim(-4,4) +
+            geom_hline(yintercept=-3, color="red") +
+            geom_hline(yintercept=3, color="red") +
+            labs(title="Studentized Deleted Residuals", x="Index", y="rstudent values")
+```
+
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+Next, we see there are highly leverage points, which are the red points.
+
+``` r
+lev = hatvalues(fit.lm)
+cutoff = mean(lev)*3
+ggplot(fit.lm, aes(x=lev, y=rep(0,length(lev)))) + 
+  geom_point(color = ifelse(lev > cutoff,'red','black')) + ylim(-0.4,0.4) +
+  geom_vline(xintercept = cutoff, color = "blue")
+```
+
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+To see if these points are influential points, we will fit a linear
+regression model to a reduced dataset that does not contain these
+flagged points. From the summary table, we see that the error nor the
+adjusted R<sup>2</sup> values change much, so, these points are not
+influential points and the original dataset can still be
+used.
+
+## Transformations and Linearity, Equal Variance, and Normality Conditions
+
+Linearity, equal variance, and normality assumptions will be checked.
+
+The residual vs. fit plot, which tests linearity and equal variance,
+shows there is a bit of *fanning effect*, so the response variable,
+valence, may need to be transformed. The normal Q-Q plot, which checks
+normality, shows that normality appears to be met.
+
+``` r
+suppressMessages(library(tidyverse)) # To use %>% function
+fit.lm %>% augment() %>%
+  ggplot(., aes(x = .fitted, y = .resid)) +
+  geom_point()  +
+  geom_hline(yintercept = 0, col=4) +
+  labs(x = 'Fitted Values', y = 'Residuals') + 
+  ggtitle("Residual vs Fit (Pre-transformation)")
+```
+
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+``` r
+fit.lm %>% augment() %>%
+  ggplot(., aes(sample = .resid)) +
+  stat_qq() +
+  stat_qq_line(col="red") +
+  ggtitle("Normal Q-Q Plot (Pre-transformation)")
+```
+
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-13-2.png)<!-- -->
+
+The **Box-Cox plot** method will find the best value that will be used
+to raise the response variable, valence, to that value.
+
+``` r
+suppressMessages(library(MASS)) # To use Box-Cox
+bc = boxcox(fit.lm,lambda = seq(-1, 1.5, length = 10))
+```
+
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+``` r
+ind = which(bc$y == max(bc$y))
+maxlambda = bc$x[ind]
+trnsf.mod = lm(valence^maxlambda ~ danceability + energy + duration_ms + acousticness)
+```
+
+Checking normality, equal variance, and linearity once again–the
+residual vs. fit plot shows the points are more randomly dispersed, so,
+equal variance and linearity are met, and the normal Q-Q plot appears to
+show normality is satisfied. For a sanity check, the Shapiro-Wilk test
+is used to check that normality is indeed met (p-value is greater than
+0.05).
+
+``` r
+trnsf.mod %>% augment() %>%
+  ggplot(., aes(x = .fitted, y = .resid)) +
+  geom_point()  +
+  geom_hline(yintercept = 0, col=4) +
+  labs(x = 'Fitted Values', y = 'Residuals') + 
+  ggtitle("Residual vs Fit (After transformation)")
+```
+
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+
+``` r
+trnsf.mod %>% augment() %>%
+  ggplot(., aes(sample = .resid)) +
+  stat_qq() +
+  stat_qq_line(col="red") +
+  ggtitle("Normal Q-Q Plot (After transformation)")
+```
+
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-15-2.png)<!-- -->
+
+``` r
+mod.resid = resid(trnsf.mod)
+shapiro.test(mod.resid)
+```
+
+    ## 
+    ##  Shapiro-Wilk normality test
+    ## 
+    ## data:  mod.resid
+    ## W = 0.99505, p-value = 0.1068
