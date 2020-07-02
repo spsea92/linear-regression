@@ -1,17 +1,22 @@
-Building a Linear Regression Model to Predict Song’s Valence
-(In-Progress)
+Building a Multiple Linear Regression Model to Predict a Song’s Valence
 ================
 Srey Sea
-6/29/2020
+7/1/2020
 
-In this project, I will create a linear regression model to predict a
-song’s valence. Caution–the model obtained may or not be a good model
-for this prediction. The data is provided by Spotify and a Python script
-was created and used to collect the data in a .csv file.
+This project builds a multiple linear regression from songs’ audio
+features and will predict a song’s valence in order to answer the
+question:
 
-## Variables Selection
+###### Is song’s audio features to build a good linear regression model in order to predict a song’s valence?
 
-First, the parameters, or the independent variables, need to be chosen.
+The data is provided by Spotify and a Python script was created and used
+to collect the
+[dataset](https://github.com/spsea92/linear-regression/blob/master/dataset.csv)
+that is used in this project.
+
+## Predictor Variables Selection
+
+First, the predictor variables need to be chosen.
 
 Loading the songs dataset.
 
@@ -35,7 +40,7 @@ names(mydata)
     ## [21] "time_signature"
 
 The method of the **best subsets regression with adjusted
-R<sup>2</sup>** will be used to select the independent variables. The
+R<sup>2</sup>** will be used to select the predictor variables. The
 model with the highest adjusted R<sup>2</sup> values and the lowest MSE
 value is deemed the best model. Below shows that model \#6, which
 includes danceability, energy, speechiness, acousticness, liveness, and
@@ -87,10 +92,10 @@ summary.mod$which
     ## 7            FALSE     TRUE FALSE        TRUE          FALSE
     ## 8             TRUE     TRUE FALSE        TRUE          FALSE
 
-Interaction terms should be considered. So, a correlation heatmap will
-be used to see the interactions amongst the variables. [A tutorial to
-create a correlation heatmap can be found
-here.](http://www.sthda.com/english/wiki/ggplot2-quick-correlation-matrix-heatmap-r-software-and-data-visualization)
+Interaction terms should be considered. A correlation heatmap will be
+used to see the interactions amongst the variables. I used [this
+tutorial](http://www.sthda.com/english/wiki/ggplot2-quick-correlation-matrix-heatmap-r-software-and-data-visualization)
+to create the heatmap.
 
 ``` r
 mydata2 = mydata[,c(4,5,9,10,12,20)]
@@ -134,23 +139,17 @@ ggheatmap +
 The strongest correlation is between energy and acousticness, so, their
 interaction term will be considered.
 
-The current model: **valence** = β<sub>o</sub> +
-β<sub>1</sub>**danceability** + β<sub>2</sub>**energy** +
-β<sub>3</sub>**speechiness** + β<sub>4</sub>**acousticness** +
-β<sub>5</sub>**liveness** + β<sub>6</sub>**duration\_ms** +
-β<sub>7</sub>**energy\*acousticness**
-
 ``` r
 mod0 = lm(valence ~ danceability + energy + speechiness + acousticness 
           + liveness + duration_ms + I(energy*acousticness))
 ```
 
 Next, a series of **partial F-tests** will be performed to determine the
-independent variables to be used for the final model.
+predictor variables to be used for the final model.
 
 Looking at the summary of the model, the parameters speechiness,
-acousticness, liveness, and the interaction seems to be insignificant to
-the model as their p-value is over 0.05.
+acousticness, liveness, and the interaction term seems to be
+insignificant to the model as their p-value is over 0.05.
 
 ``` r
 summary(mod0)
@@ -183,9 +182,9 @@ summary(mod0)
     ## F-statistic: 35.43 on 7 and 496 DF,  p-value: < 2.2e-16
 
 For the first partial F-test, we will see if *all* of the possible
-insignificant parameter are, in fact, insignificant. We see from the
-p-value = 0.02393 that at least one of parameters in question is
-significant.
+insignificant parameter are, in fact, insignificant. So, the null
+hypothesis is that speechiness, acousticness, liveness, and the
+interaction term are insignificant.
 
 ``` r
 red.mod = lm(valence ~ danceability + energy + duration_ms)
@@ -203,6 +202,11 @@ anova(red.mod, mod1)
     ## 2    496 14.160  4   0.32408 2.838 0.02393 *
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+We see from the p-value is 0.02393, so the probability that the null
+hypothesis is true is very small, and thus, at least one of parameters
+(speechiness, acousticness, liveness, and the interaction term) in
+question is significant.
 
 The next series of partial F-test will test each of the parameters in
 question to determine their significance.
@@ -274,8 +278,10 @@ The next partial F-test will determine the significance of acousticness
 and the interaction term. If the interaction between energy and
 acousticness is significant, then we will have to include acousticness
 no matter the significance, but, if acousticness is found to be
-significant, we do not have to include the interaction term. The ANOVA
-table below shows that the interaction term is insigificant to the
+significant, we do not necessarily need to include the interaction term.
+We saw earlier that acousticness is significant, so, it is enough to see
+if the interaction term is significant or insignificant. The ANOVA table
+below shows that the interaction term is insigificant to the
 model.
 
 ``` r
@@ -330,8 +336,9 @@ summary(fit.lm)
 ## Influential Points
 
 The **studentized deleted residuals** will be used to determine any
-outliers. Since none of the rstudent values are greater than 3 or less
-than -3, there are no outliers.
+outliers. If any of the *rstudent absolute values* is greater than 3,
+the data point is considered an outlier. Since none of the rstudent
+values are greater than 3 or less than -3, there are no outliers.
 
 ``` r
 outl = rstudent(fit.lm)
@@ -344,7 +351,8 @@ ggplot(fit.lm, aes(x=index, y=outl)) + geom_point() + ylim(-4,4) +
 
 ![](linear_regression_model_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
-Next, we see there are highly leverage points, which are the red points.
+Next, we see that there are highly leverage points, which are the red
+points.
 
 ``` r
 lev = hatvalues(fit.lm)
@@ -362,6 +370,40 @@ flagged points. From the summary table, we see that the error nor the
 adjusted R<sup>2</sup> values change much, so, these points are not
 influential points and the original dataset can still be
 used.
+
+``` r
+flagged_points = data.frame(mydata[which(lev > cutoff),]) # Flagged data points
+reduceddata = mydata[-c(which(lev > cutoff)),] # Reduced data without highly leverage points
+rd_val = reduceddata$valence
+rd_dance = reduceddata$danceability
+rd_enr = reduceddata$energy
+rd_dur = reduceddata$duration_ms
+rd_acs = reduceddata$acousticness
+rd.mod = lm(rd_val ~ rd_dance + rd_enr + rd_dur + rd_acs)
+summary(rd.mod)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = rd_val ~ rd_dance + rd_enr + rd_dur + rd_acs)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.42285 -0.11299 -0.01285  0.11078  0.41657 
+    ## 
+    ## Coefficients:
+    ##               Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)  2.335e-02  7.756e-02   0.301   0.7635    
+    ## rd_dance     6.169e-01  6.020e-02  10.249  < 2e-16 ***
+    ## rd_enr       3.231e-01  5.981e-02   5.402 1.03e-07 ***
+    ## rd_dur      -9.174e-07  2.009e-07  -4.568 6.25e-06 ***
+    ## rd_acs       9.698e-02  4.004e-02   2.422   0.0158 *  
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.1691 on 489 degrees of freedom
+    ## Multiple R-squared:  0.324,  Adjusted R-squared:  0.3184 
+    ## F-statistic: 58.59 on 4 and 489 DF,  p-value: < 2.2e-16
 
 ## Transformations and Linearity, Equal Variance, and Normality Conditions
 
@@ -382,7 +424,7 @@ fit.lm %>% augment() %>%
   ggtitle("Residual vs Fit (Pre-transformation)")
 ```
 
-![](linear_regression_model_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 ``` r
 fit.lm %>% augment() %>%
@@ -392,7 +434,7 @@ fit.lm %>% augment() %>%
   ggtitle("Normal Q-Q Plot (Pre-transformation)")
 ```
 
-![](linear_regression_model_files/figure-gfm/unnamed-chunk-13-2.png)<!-- -->
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-14-2.png)<!-- -->
 
 The **Box-Cox plot** method will find the best value that will be used
 to raise the response variable, valence, to that value.
@@ -402,11 +444,17 @@ suppressMessages(library(MASS)) # To use Box-Cox
 bc = boxcox(fit.lm,lambda = seq(-1, 1.5, length = 10))
 ```
 
-![](linear_regression_model_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
 ``` r
 ind = which(bc$y == max(bc$y))
 maxlambda = bc$x[ind]
+maxlambda
+```
+
+    ## [1] 0.6414141
+
+``` r
 trnsf.mod = lm(valence^maxlambda ~ danceability + energy + duration_ms + acousticness)
 ```
 
@@ -426,7 +474,7 @@ trnsf.mod %>% augment() %>%
   ggtitle("Residual vs Fit (After transformation)")
 ```
 
-![](linear_regression_model_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 ``` r
 trnsf.mod %>% augment() %>%
@@ -436,7 +484,7 @@ trnsf.mod %>% augment() %>%
   ggtitle("Normal Q-Q Plot (After transformation)")
 ```
 
-![](linear_regression_model_files/figure-gfm/unnamed-chunk-15-2.png)<!-- -->
+![](linear_regression_model_files/figure-gfm/unnamed-chunk-16-2.png)<!-- -->
 
 ``` r
 mod.resid = resid(trnsf.mod)
@@ -448,3 +496,42 @@ shapiro.test(mod.resid)
     ## 
     ## data:  mod.resid
     ## W = 0.99505, p-value = 0.1068
+
+## Conclusion
+
+Looking at the summary of the final model, we see that the adjusted
+R<sup>2</sup> is 0.3245, so, about 32.45% of the variance found in the
+response variable, valence, is explained by the predictors danceability,
+energy, duration of the song, and acousticness.
+
+``` r
+summary(trnsf.mod)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = valence^maxlambda ~ danceability + energy + duration_ms + 
+    ##     acousticness)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -0.44505 -0.09370 -0.00038  0.10460  0.36775 
+    ## 
+    ## Coefficients:
+    ##                Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)   1.259e-01  6.342e-02   1.986  0.04759 *  
+    ## danceability  5.754e-01  5.255e-02  10.950  < 2e-16 ***
+    ## energy        3.102e-01  5.239e-02   5.921 5.96e-09 ***
+    ## duration_ms  -5.973e-07  1.422e-07  -4.200 3.16e-05 ***
+    ## acousticness  9.714e-02  3.493e-02   2.781  0.00562 ** 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.1516 on 499 degrees of freedom
+    ## Multiple R-squared:  0.3299, Adjusted R-squared:  0.3245 
+    ## F-statistic:  61.4 on 4 and 499 DF,  p-value: < 2.2e-16
+
+Based on the adjusted R<sup>2</sup> alone, we can tell that the model is
+not a good model to make a prediction about a song’s valence. Thus,
+audio features alone does not create a good linear regression model to
+predict a song’s valence.
