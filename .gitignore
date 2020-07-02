@@ -1,0 +1,13 @@
+create_csv_data.py
+create_mysql_data.py
+create_sql_data.py
+linear_regression_model.Rmd
+/linear-regression
+playlist0.csv
+playlist1.csv
+playlist2.csv
+pullplaylist.py
+tutorials_resources.txt
+.DS_Store
+.RData
+.Rhistory
